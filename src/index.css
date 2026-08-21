@@ -1,0 +1,142 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-canvas: var(--c-canvas);
+  --color-canvas-2: var(--c-canvas-2);
+  --color-surface: var(--c-surface);
+  --color-ink: var(--c-ink);
+  --color-ink-2: var(--c-ink-2);
+  --color-muted: var(--c-muted);
+  --color-faint: var(--c-faint);
+  --color-line: var(--c-line);
+  --color-accent: var(--c-accent);
+  --color-accent-soft: var(--c-accent-soft);
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Light — white/black primary, blue #8f9fc2 secondary */
+:root {
+  --c-canvas: #ffffff;
+  --c-canvas-2: #f3f3f6;
+  --c-surface: #fafafb;
+  --c-ink: #0f0f12;
+  --c-ink-2: #33343b;
+  --c-muted: #7c7e88;
+  --c-faint: #b6b8c2;
+  --c-line: #e4e4ea;
+  --c-accent: #8f9fc2;
+  --c-accent-soft: #e9ecf4;
+
+  --grid-line: rgba(16, 16, 24, 0.05);
+  --wash:
+    radial-gradient(120% 90% at 88% 8%, rgba(143, 159, 194, 0.16) 0%, transparent 58%),
+    radial-gradient(100% 80% at 10% 100%, rgba(143, 159, 194, 0.1) 0%, transparent 60%);
+}
+
+/* Dark — black canvas, white ink, same blue secondary */
+.dark {
+  --c-canvas: #0d0e11;
+  --c-canvas-2: #191a1f;
+  --c-surface: #17181d;
+  --c-ink: #f5f5f7;
+  --c-ink-2: #c9cad2;
+  --c-muted: #888a95;
+  --c-faint: #55565f;
+  --c-line: #2a2b31;
+  --c-accent: #8f9fc2;
+  --c-accent-soft: #23262f;
+
+  --grid-line: rgba(255, 255, 255, 0.05);
+  --wash:
+    radial-gradient(120% 90% at 88% 8%, rgba(143, 159, 194, 0.14) 0%, transparent 58%),
+    radial-gradient(100% 80% at 10% 100%, rgba(143, 159, 194, 0.07) 0%, transparent 60%);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--c-ink);
+  background-color: var(--c-canvas);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* Faint engineering-paper grid that sits under the whole flow. */
+.paper-grid {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 78px 78px;
+}
+
+.paper-wash {
+  background: var(--wash);
+}
+
+.step-in {
+  animation: step-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes star-spin {
+  0%   { transform: rotate(0deg) scale(1); }
+  25%  { transform: rotate(90deg) scale(1.08); }
+  50%  { transform: rotate(180deg) scale(1); }
+  75%  { transform: rotate(270deg) scale(1.08); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+input[type='date']::-webkit-calendar-picker-indicator {
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.dark input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+.modal-in {
+  animation: modal-fade-in 0.3s ease-out both;
+}
+
+.modal-pop {
+  animation: modal-scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
