@@ -345,8 +345,11 @@ function Header({
 
   return (
     <header
-      className="fixed inset-x-0 top-0 z-20 transition-transform duration-150 ease-out"
-      style={{ transform: keyboardOffset ? `translateY(${keyboardOffset}px)` : undefined }}
+      className="fixed inset-x-0 top-0 z-20"
+      style={{
+        transform: keyboardOffset ? `translateY(${keyboardOffset}px)` : undefined,
+        transition: 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)',
+      }}
     >
       <div className="flex items-center justify-between px-6 py-5 sm:px-10">
         <Logo height={20} />
@@ -448,10 +451,11 @@ function Footer({
 }) {
   return (
     <div
-      className="fixed bottom-0 left-0 z-20 flex items-center gap-4 px-6 pt-7 transition-transform duration-150 ease-out sm:px-16"
+      className="fixed bottom-0 left-0 z-20 flex items-center gap-4 px-6 pt-7 sm:px-16"
       style={{
         paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))',
         transform: keyboardOffset ? `translateY(-${keyboardOffset}px)` : undefined,
+        transition: 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)',
       }}
     >
       {onBack && (
