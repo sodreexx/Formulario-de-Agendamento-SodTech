@@ -274,6 +274,40 @@ const EMPTY: Form = {
 }
 
 /* ------------------------------------------------------------------ */
+/* Teclado virtual                                                    */
+/* ------------------------------------------------------------------ */
+
+/** Mantém cabeçalho e rodapé (que são `fixed`) visíveis quando o teclado
+ *  virtual do celular abre. No iOS Safari, a viewport de layout (usada por
+ *  `position: fixed`) não encolhe com o teclado — só a viewport visual —
+ *  então elementos fixos podem sair da área visível. Aqui a gente escuta a
+ *  `visualViewport` e desloca os dois de volta pra dentro da área visível. */
+function useKeyboardAwareOffsets() {
+  const [offsets, setOffsets] = useState({ top: 0, bottom: 0 })
+
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+
+    const update = () => {
+      const top = vv.offsetTop
+      const bottom = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+      setOffsets({ top, bottom })
+    }
+
+    update()
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    return () => {
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+    }
+  }, [])
+
+  return offsets
+}
+
+/* ------------------------------------------------------------------ */
 /* Chrome                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -297,6 +331,7 @@ function Header({
   dark,
   onToggleLang,
   onToggleDark,
+  keyboardOffset = 0,
 }: {
   step: number
   t: Copy
@@ -304,11 +339,15 @@ function Header({
   dark: boolean
   onToggleLang: () => void
   onToggleDark: () => void
+  keyboardOffset?: number
 }) {
   const progress = step === 0 ? 0 : Math.min(step / TOTAL, 1)
 
   return (
-    <header className="fixed inset-x-0 top-0 z-20">
+    <header
+      className="fixed inset-x-0 top-0 z-20 transition-transform duration-150 ease-out"
+      style={{ transform: keyboardOffset ? `translateY(${keyboardOffset}px)` : undefined }}
+    >
       <div className="flex items-center justify-between px-6 py-5 sm:px-10">
         <Logo height={20} />
         <div className="flex items-center gap-3">
@@ -397,6 +436,7 @@ function Footer({
   t,
   hintKey = true,
   disabled = false,
+  keyboardOffset = 0,
 }: {
   onBack?: () => void
   onNext: () => void
@@ -404,11 +444,15 @@ function Footer({
   t: Copy
   hintKey?: boolean
   disabled?: boolean
+  keyboardOffset?: number
 }) {
   return (
     <div
-      className="fixed bottom-0 left-0 z-20 flex items-center gap-4 px-6 pt-7 sm:px-16"
-      style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))' }}
+      className="fixed bottom-0 left-0 z-20 flex items-center gap-4 px-6 pt-7 transition-transform duration-150 ease-out sm:px-16"
+      style={{
+        paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))',
+        transform: keyboardOffset ? `translateY(-${keyboardOffset}px)` : undefined,
+      }}
     >
       {onBack && (
         <button
@@ -551,6 +595,7 @@ export default function App() {
 
   const t = DICT[lang]
   const sizes = SIZES[lang]
+  const keyboardOffsets = useKeyboardAwareOffsets()
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
@@ -687,6 +732,7 @@ export default function App() {
         dark={dark}
         onToggleLang={() => setLang((l) => (l === 'pt' ? 'en' : 'pt'))}
         onToggleDark={() => setDark((d) => !d)}
+        keyboardOffset={keyboardOffsets.top}
       />
 
       <main
@@ -926,7 +972,9 @@ export default function App() {
         )}
       </main>
 
-      {step >= 1 && step <= 8 && <Footer onBack={step > 1 ? back : undefined} onNext={advance} label={t.ok} t={t} />}
+      {step >= 1 && step <= 8 && (
+        <Footer onBack={step > 1 ? back : undefined} onNext={advance} label={t.ok} t={t} keyboardOffset={keyboardOffsets.bottom} />
+      )}
       {step === 9 && (
         <Footer
           onBack={back}
@@ -934,6 +982,7 @@ export default function App() {
           label={sending ? t.sending : t.send}
           t={t}
           disabled={sending || hasMissing}
+          keyboardOffset={keyboardOffsets.bottom}
         />
       )}
 
