@@ -417,7 +417,6 @@ function Header({
   dark,
   onToggleLang,
   onToggleDark,
-  keyboardOffset = 0,
 }: {
   step: number
   t: Copy
@@ -425,18 +424,11 @@ function Header({
   dark: boolean
   onToggleLang: () => void
   onToggleDark: () => void
-  keyboardOffset?: number
 }) {
   const progress = step === 0 ? 0 : Math.min(step / TOTAL, 1)
 
   return (
-    <header
-      className="fixed inset-x-0 top-0 z-20"
-      style={{
-        transform: keyboardOffset ? `translateY(${keyboardOffset}px)` : undefined,
-        transition: 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)',
-      }}
-    >
+    <header className="fixed inset-x-0 top-0 z-20">
       <div className="flex items-center justify-between px-6 py-5 sm:px-10">
         <Logo height={20} />
         <div className="flex items-center gap-3">
@@ -852,7 +844,6 @@ export default function App() {
         dark={dark}
         onToggleLang={() => setLang((l) => (l === 'pt' ? 'en' : 'pt'))}
         onToggleDark={() => setDark((d) => !d)}
-        keyboardOffset={keyboardOffsets.top}
       />
 
       <main
