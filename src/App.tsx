@@ -330,6 +330,69 @@ function useKeyboardAwareOffsets() {
   return offsets
 }
 
+/** Detecta o teclado virtual pelo foco em campos de texto, não pela medida da
+ *  viewport. No iOS a viewport também muda por conta da barra de endereço, o
+ *  que torna qualquer cálculo baseado nela pouco confiável; o foco, não. */
+function useKeyboardOpen() {
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (!window.matchMedia('(pointer: coarse)').matches) return
+
+    const isField = (el: EventTarget | null) =>
+      el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')
+    const onIn = (e: FocusEvent) => isField(e.target) && setOpen(true)
+    const onOut = (e: FocusEvent) => isField(e.target) && setOpen(false)
+
+    document.addEventListener('focusin', onIn)
+    document.addEventListener('focusout', onOut)
+    return () => {
+      document.removeEventListener('focusin', onIn)
+      document.removeEventListener('focusout', onOut)
+    }
+  }, [])
+
+  return open
+}
+
+/** Painel de diagnóstico — só aparece com `?debug` na URL. Serve pra ler os
+ *  valores reais num aparelho físico, já que emulação não reproduz o teclado
+ *  do iOS com fidelidade. */
+function DebugOverlay() {
+  const [v, setV] = useState<Record<string, unknown>>({})
+
+  useEffect(() => {
+    const vv = window.visualViewport
+    const update = () =>
+      setV({
+        vvH: Math.round(vv?.height ?? 0),
+        vvTop: Math.round(vv?.offsetTop ?? 0),
+        innH: window.innerHeight,
+        scrollY: Math.round(window.scrollY),
+        foco: document.activeElement?.tagName ?? '-',
+      })
+
+    update()
+    const id = setInterval(update, 250)
+    vv?.addEventListener('resize', update)
+    vv?.addEventListener('scroll', update)
+    return () => {
+      clearInterval(id)
+      vv?.removeEventListener('resize', update)
+      vv?.removeEventListener('scroll', update)
+    }
+  }, [])
+
+  return (
+    <div
+      className="pointer-events-none fixed left-0 top-0 z-[9999] bg-black/80 px-1.5 py-1 font-mono text-[11px] leading-tight text-green-400"
+      style={{ transform: `translateY(${(v.vvTop as number) ?? 0}px)` }}
+    >
+      vvH {String(v.vvH)} · top {String(v.vvTop)} · innH {String(v.innH)} · scr {String(v.scrollY)} · {String(v.foco)}
+    </div>
+  )
+}
+
 /* ------------------------------------------------------------------ */
 /* Chrome                                                             */
 /* ------------------------------------------------------------------ */
@@ -434,11 +497,13 @@ function Question({
   title,
   hint,
   children,
+  footer,
 }: {
   badge: ReactNode
   title: ReactNode
   hint?: ReactNode
   children?: ReactNode
+  footer?: ReactNode
 }) {
   return (
     <div className="step-in w-full max-w-[720px]">
@@ -448,6 +513,7 @@ function Question({
       </h1>
       {hint && <p className="mt-3 max-w-[600px] text-[15px] leading-relaxed text-ink-2/80">{hint}</p>}
       {children && <div className="mt-10">{children}</div>}
+      {footer}
     </div>
   )
 }
@@ -463,6 +529,7 @@ function Footer({
   hintKey = true,
   disabled = false,
   keyboardOffset = 0,
+  inline = false,
 }: {
   onBack?: () => void
   onNext: () => void
@@ -471,15 +538,38 @@ function Footer({
   hintKey?: boolean
   disabled?: boolean
   keyboardOffset?: number
+  /** Em fluxo normal, logo abaixo do campo — usado enquanto o teclado virtual
+   *  está aberto, pra não disputar posicionamento com o Safari. */
+  inline?: boolean
 }) {
+  const self = useRef<HTMLDivElement>(null)
+
+  // Ao entrar em modo inline (teclado abrindo), garante que o botão fique
+  // visível: o Safari rola o campo focado pra área visível, mas não o que
+  // vem logo depois dele.
+  useEffect(() => {
+    if (!inline) return
+    const id = setTimeout(() => self.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 350)
+    return () => clearTimeout(id)
+  }, [inline])
+
   return (
     <div
-      className="fixed bottom-0 left-0 z-20 flex items-center gap-4 px-6 pt-7 sm:px-16"
-      style={{
-        paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))',
-        transform: keyboardOffset ? `translateY(-${keyboardOffset}px)` : undefined,
-        transition: 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)',
-      }}
+      ref={self}
+      className={
+        inline
+          ? 'mt-8 flex items-center gap-4'
+          : 'fixed bottom-0 left-0 z-20 flex items-center gap-4 px-6 pt-7 sm:px-16'
+      }
+      style={
+        inline
+          ? undefined
+          : {
+              paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))',
+              transform: keyboardOffset ? `translateY(-${keyboardOffset}px)` : undefined,
+              transition: 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)',
+            }
+      }
     >
       {onBack && (
         <button
@@ -623,6 +713,8 @@ export default function App() {
   const t = DICT[lang]
   const sizes = SIZES[lang]
   const keyboardOffsets = useKeyboardAwareOffsets()
+  const keyboardOpen = useKeyboardOpen()
+  const debug = typeof window !== 'undefined' && window.location.search.includes('debug')
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
@@ -748,6 +840,7 @@ export default function App() {
   return (
     <>
       {!ready && <Preloader onDone={() => setReady(true)} />}
+      {debug && <DebugOverlay />}
     <div className="relative min-h-dvh overflow-hidden bg-canvas" style={{ opacity: ready ? 1 : 0, transition: 'opacity 0.4s ease 0.1s' }}>
       <div className="paper-wash pointer-events-none absolute inset-0" />
       <div className="paper-grid pointer-events-none absolute inset-0" />
@@ -763,7 +856,9 @@ export default function App() {
       />
 
       <main
-        className="relative z-10 mx-auto flex min-h-dvh max-w-[1180px] items-center justify-center px-6 pb-40 pt-32 sm:px-10"
+        className={`relative z-10 mx-auto flex min-h-dvh max-w-[1180px] justify-center px-6 sm:px-10 ${
+          keyboardOpen ? 'items-start pb-16 pt-28' : 'items-center pb-40 pt-32'
+        }`}
         onKeyDown={onEnter}
       >
         {step === 0 && (
@@ -799,7 +894,16 @@ export default function App() {
         {step >= 1 && step <= 8 && (() => {
           const q = t.q[step - 1]
           return (
-            <Question badge={<>{step} →</>} title={q.title(who, co)} hint={q.hint}>
+            <Question
+              badge={<>{step} →</>}
+              title={q.title(who, co)}
+              hint={q.hint}
+              footer={
+                keyboardOpen ? (
+                  <Footer inline onBack={step > 1 ? back : undefined} onNext={advance} label={t.ok} t={t} />
+                ) : null
+              }
+            >
               {step === 1 && (
                 <div className="flex items-end gap-5">
                   <div className="relative shrink-0">
@@ -999,7 +1103,7 @@ export default function App() {
         )}
       </main>
 
-      {step >= 1 && step <= 8 && (
+      {step >= 1 && step <= 8 && !keyboardOpen && (
         <Footer onBack={step > 1 ? back : undefined} onNext={advance} label={t.ok} t={t} keyboardOffset={keyboardOffsets.bottom} />
       )}
       {step === 9 && (
