@@ -281,17 +281,28 @@ const EMPTY: Form = {
  *  virtual do celular abre. No iOS Safari, a viewport de layout (usada por
  *  `position: fixed`) não encolhe com o teclado — só a viewport visual —
  *  então elementos fixos podem sair da área visível. Aqui a gente escuta a
- *  `visualViewport` e desloca os dois de volta pra dentro da área visível. */
+ *  `visualViewport` e desloca os dois de volta pra dentro da área visível.
+ *
+ *  Importante: não usamos `window.innerHeight` como referência de "altura
+ *  sem teclado" — no Safari esse valor também muda quando a barra de
+ *  endereço encolhe/expande, e como isso costuma acontecer junto com a
+ *  abertura do teclado, o cálculo `innerHeight - vv.height` pode inflar e
+ *  fazer o rodapé "saltar" mais do que deveria. Em vez disso, guardamos a
+ *  maior altura de viewport visual já observada nesta sessão como base. */
 function useKeyboardAwareOffsets() {
   const [offsets, setOffsets] = useState({ top: 0, bottom: 0 })
+  const baseline = useRef(0)
 
   useEffect(() => {
     const vv = window.visualViewport
     if (!vv) return
 
+    baseline.current = vv.height
+
     const update = () => {
+      if (vv.height > baseline.current) baseline.current = vv.height
       const top = vv.offsetTop
-      const bottom = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+      const bottom = Math.max(0, baseline.current - vv.height - vv.offsetTop)
       setOffsets({ top, bottom })
     }
 
