@@ -1,8 +1,5 @@
 {
   "title": "Sod Tech — Agendamento",
   "description": "Formulário de agendamento de reunião com a Sod Tech.",
-  "language": "pt",
-  "robots": {
-    "index": false
-  }
+  "language": "pt"
 }

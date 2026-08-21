@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://SUBSTITUA-PELA-URL-DO-RENDER.onrender.com/api/$1"
+    }
+  ]
+}
