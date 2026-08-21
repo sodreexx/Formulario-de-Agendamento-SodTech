@@ -283,7 +283,7 @@ function IconButton({ onClick, label, children }: { onClick: () => void; label: 
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="grid h-9 w-9 place-items-center rounded-full border border-line/80 bg-surface/70 text-ink-2 transition-colors hover:border-ink/30 hover:text-ink"
+      className="grid h-11 w-11 place-items-center rounded-full border border-line/80 bg-surface/70 text-ink-2 transition-colors hover:border-ink/30 hover:text-ink sm:h-9 sm:w-9"
     >
       {children}
     </button>
@@ -324,7 +324,7 @@ function Header({
           <button
             type="button"
             onClick={onToggleLang}
-            className="rounded-full border border-line/80 bg-surface/70 px-3 py-1.5 text-[12px] font-bold text-ink-2 transition-colors hover:border-ink/30 hover:text-ink"
+            className="rounded-full border border-line/80 bg-surface/70 px-3.5 py-2 text-[12px] font-bold text-ink-2 transition-colors hover:border-ink/30 hover:text-ink sm:px-3 sm:py-1.5"
             aria-label="Toggle language"
           >
             {lang === 'pt' ? 'EN' : 'PT'}
@@ -406,12 +406,15 @@ function Footer({
   disabled?: boolean
 }) {
   return (
-    <div className="fixed bottom-0 left-0 z-20 flex items-center gap-4 px-6 py-7 sm:px-16">
+    <div
+      className="fixed bottom-0 left-0 z-20 flex items-center gap-4 px-6 pt-7 sm:px-16"
+      style={{ paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))' }}
+    >
       {onBack && (
         <button
           type="button"
           onClick={onBack}
-          className="text-[15px] font-medium text-ink-2 transition-opacity hover:opacity-60"
+          className="-ml-2 rounded-lg px-2 py-2.5 text-[15px] font-medium text-ink-2 transition-opacity hover:opacity-60"
         >
           {t.back}
         </button>
@@ -646,7 +649,12 @@ export default function App() {
 
   const onEnter = (event: KeyboardEvent) => {
     if (event.key !== 'Enter') return
-    if (event.shiftKey && (event.target as HTMLElement).tagName === 'TEXTAREA') return
+    if ((event.target as HTMLElement).tagName === 'TEXTAREA') {
+      // Em telas de toque não há como segurar Shift no teclado virtual, então o
+      // Enter vira quebra de linha normal — o usuário avança pelo botão.
+      const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+      if (isTouch || event.shiftKey) return
+    }
     event.preventDefault()
     advance()
   }
@@ -668,7 +676,7 @@ export default function App() {
   return (
     <>
       {!ready && <Preloader onDone={() => setReady(true)} />}
-    <div className="relative min-h-screen overflow-hidden bg-canvas" style={{ opacity: ready ? 1 : 0, transition: 'opacity 0.4s ease 0.1s' }}>
+    <div className="relative min-h-dvh overflow-hidden bg-canvas" style={{ opacity: ready ? 1 : 0, transition: 'opacity 0.4s ease 0.1s' }}>
       <div className="paper-wash pointer-events-none absolute inset-0" />
       <div className="paper-grid pointer-events-none absolute inset-0" />
 
@@ -682,7 +690,7 @@ export default function App() {
       />
 
       <main
-        className="relative z-10 mx-auto flex min-h-screen max-w-[1180px] items-center justify-center px-6 pb-40 pt-32 sm:px-10"
+        className="relative z-10 mx-auto flex min-h-dvh max-w-[1180px] items-center justify-center px-6 pb-40 pt-32 sm:px-10"
         onKeyDown={onEnter}
       >
         {step === 0 && (
@@ -836,7 +844,7 @@ export default function App() {
                     placeholder={q.placeholder}
                     className="w-full resize-none rounded-2xl border border-line/80 bg-surface/60 p-5 text-[17px] leading-relaxed text-ink outline-none transition-colors placeholder:text-faint focus:border-accent"
                   />
-                  <p className="mt-3 text-[12px] text-faint">{t.notesHint}</p>
+                  <p className="mt-3 text-[12px] text-faint pointer-coarse:hidden">{t.notesHint}</p>
                 </div>
               )}
 
