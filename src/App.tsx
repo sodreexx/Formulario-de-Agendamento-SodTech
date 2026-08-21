@@ -288,7 +288,14 @@ const EMPTY: Form = {
  *  endereço encolhe/expande, e como isso costuma acontecer junto com a
  *  abertura do teclado, o cálculo `innerHeight - vv.height` pode inflar e
  *  fazer o rodapé "saltar" mais do que deveria. Em vez disso, guardamos a
- *  maior altura de viewport visual já observada nesta sessão como base. */
+ *  maior altura de viewport visual já observada nesta sessão como base.
+ *
+ *  Como essa base trava no maior valor (barra de endereço encolhida), a
+ *  própria barra passa a contar como "encolhimento" quando reaparece. Por
+ *  isso só tratamos como teclado um encolhimento acima de KEYBOARD_MIN: a
+ *  barra do navegador ocupa ~50-100px, o teclado ~250-400px. */
+const KEYBOARD_MIN = 150
+
 function useKeyboardAwareOffsets() {
   const [offsets, setOffsets] = useState({ top: 0, bottom: 0 })
   const baseline = useRef(0)
@@ -301,8 +308,13 @@ function useKeyboardAwareOffsets() {
 
     const update = () => {
       if (vv.height > baseline.current) baseline.current = vv.height
+      const shrink = baseline.current - vv.height
+      if (shrink < KEYBOARD_MIN) {
+        setOffsets({ top: 0, bottom: 0 })
+        return
+      }
       const top = vv.offsetTop
-      const bottom = Math.max(0, baseline.current - vv.height - vv.offsetTop)
+      const bottom = Math.max(0, shrink - vv.offsetTop)
       setOffsets({ top, bottom })
     }
 
