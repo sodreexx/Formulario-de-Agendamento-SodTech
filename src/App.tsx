@@ -632,6 +632,9 @@ export default function App() {
   const [stepError, setStepError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  // Quando a pergunta foi aberta pelo "editar" da revisão, confirmar (ou
+  // voltar) devolve pra revisão em vez de seguir o fluxo normal de perguntas.
+  const [editingFromReview, setEditingFromReview] = useState(false)
   const notesRef = useRef<HTMLTextAreaElement>(null)
 
   const t = DICT[lang]
@@ -709,7 +712,29 @@ export default function App() {
     [form, t],
   )
 
-  const back = () => setStep((s) => Math.max(s - 1, 0))
+  const REVIEW = 9
+
+  /** Abre uma pergunta a partir do "editar" da revisão. */
+  const editFromReview = (target: number) => {
+    setEditingFromReview(true)
+    setStep(target)
+  }
+
+  /** Volta pra revisão, encerrando o modo de edição. */
+  const backToReview = () => {
+    setEditingFromReview(false)
+    setStep(REVIEW)
+  }
+
+  const back = () => {
+    // Durante uma edição, "voltar" desiste da alteração de rota e retorna pra
+    // revisão — não faz sentido cair na pergunta anterior.
+    if (editingFromReview) {
+      backToReview()
+      return
+    }
+    setStep((s) => Math.max(s - 1, 0))
+  }
 
   const submit = async () => {
     setSending(true)
@@ -743,6 +768,10 @@ export default function App() {
       const error = validateStep(step)
       if (error) {
         setStepError(error)
+        return
+      }
+      if (editingFromReview) {
+        backToReview()
         return
       }
       setStep(step + 1)
@@ -990,13 +1019,13 @@ export default function App() {
               {summary.map((row, index) => (
                 <li
                   key={row.label}
-                  className={`grid grid-cols-[1fr_auto] items-center gap-4 px-6 py-4 sm:grid-cols-[150px_1fr_auto] ${
+                  className={`grid grid-cols-[auto_1fr_auto] items-center gap-3 px-5 py-4 sm:grid-cols-[150px_1fr_auto] sm:gap-4 sm:px-6 ${
                     index > 0 ? 'border-t border-line/60' : ''
                   }`}
                 >
                   <span className="text-[13px] text-muted">{row.label}</span>
                   <span
-                    className={`text-[15px] font-semibold sm:text-center ${
+                    className={`text-right text-[15px] font-semibold sm:text-center ${
                       row.missing ? 'text-red-500 dark:text-red-400' : 'text-ink'
                     }`}
                   >
@@ -1004,7 +1033,7 @@ export default function App() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => setStep(row.go)}
+                    onClick={() => editFromReview(row.go)}
                     className="text-[13px] font-medium text-ink-2 underline-offset-4 transition-opacity hover:underline hover:opacity-70"
                   >
                     {t.edit}
@@ -1039,6 +1068,7 @@ export default function App() {
               onClick={() => {
                 setForm(EMPTY)
                 setSubmitError(null)
+                setEditingFromReview(false)
                 setStep(0)
               }}
               className="mt-10 text-[14px] font-medium text-muted underline underline-offset-4 hover:text-ink-2"
