@@ -53,6 +53,14 @@ function getTransporter() {
 }
 
 const app = express()
+
+// Em produção a API fica atrás do proxy da hospedagem (Render), então o IP da
+// conexão é sempre o do proxy. Sem isto, o limite por IP abaixo viraria um
+// limite único somado entre TODOS os visitantes. O valor 1 (um salto) faz o
+// Express ler o IP real do X-Forwarded-For sem confiar no que o cliente
+// mandou: o proxy acrescenta o IP verdadeiro por último, e é esse que vale.
+app.set('trust proxy', 1)
+
 app.use(cors({ origin: ALLOWED_ORIGIN }))
 app.use(express.json())
 
