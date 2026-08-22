@@ -853,7 +853,7 @@ export default function App() {
             <h1 className="mt-8 text-[clamp(2.1rem,5.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-0.03em] text-ink">
               {t.intro.title}
             </h1>
-            <p className="mx-auto mt-6 max-w-[600px] text-[15px] leading-[1.75] text-ink-2/80">
+            <p className="mx-auto mt-6 max-w-[600px] text-justify text-[15px] leading-[1.75] text-ink-2/80">
               {t.intro.body}
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
