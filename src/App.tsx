@@ -810,7 +810,7 @@ export default function App() {
       />
 
       <main
-        className="relative z-10 flex flex-1 overflow-y-auto px-6 sm:px-10"
+        className="relative z-10 flex min-h-0 flex-1 overflow-y-auto px-6 sm:px-10"
         onKeyDown={onEnter}
       >
         {/* `m-auto` centraliza sem cortar o topo quando o conteúdo é mais alto
