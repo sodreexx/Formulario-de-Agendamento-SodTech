@@ -100,7 +100,7 @@ const DICT: Record<Lang, Copy> = {
     coFallback: 'sua empresa',
     intro: {
       title: 'Vamos conversar sobre o futuro da sua empresa',
-      body: 'Preencha rapidinho seus dados para que nosso time entre em contato e agende uma reunião personalizada. Estamos prontos para entender suas necessidades e encontrar a melhor solução.',
+      body: 'Preencha seus dados para agendar uma reunião personalizada com nosso time e entender suas necessidades.',
       cta: 'Começar',
       time: 'Leva cerca de 2 minutos',
     },
@@ -153,7 +153,7 @@ const DICT: Record<Lang, Copy> = {
     coFallback: 'your company',
     intro: {
       title: "Let's talk about the future of your company",
-      body: 'Fill in your details quickly so our team can reach out and schedule a personalized meeting. We are ready to understand your needs and find the best solution.',
+      body: 'Fill in your details so our team can schedule a personalized meeting and understand your needs.',
       cta: 'Get started',
       time: 'Takes about 2 minutes',
     },
