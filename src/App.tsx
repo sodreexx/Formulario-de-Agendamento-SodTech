@@ -100,7 +100,7 @@ const DICT: Record<Lang, Copy> = {
     coFallback: 'sua empresa',
     intro: {
       title: 'Vamos conversar sobre o futuro da sua empresa',
-      body: 'Preencha seus dados para agendar uma reunião personalizada com nosso time e entender suas necessidades.',
+      body: 'Preencha rapidinho seus dados para que nosso time entre em contato e agende uma reunião personalizada. Estamos prontos para entender suas necessidades e encontrar a melhor solução.',
       cta: 'Começar',
       time: 'Leva cerca de 2 minutos',
     },
@@ -153,7 +153,7 @@ const DICT: Record<Lang, Copy> = {
     coFallback: 'your company',
     intro: {
       title: "Let's talk about the future of your company",
-      body: 'Fill in your details so our team can schedule a personalized meeting and understand your needs.',
+      body: 'Fill in your details quickly so our team can reach out and schedule a personalized meeting. We are ready to understand your needs and find the best solution.',
       cta: 'Get started',
       time: 'Takes about 2 minutes',
     },
@@ -853,7 +853,7 @@ export default function App() {
             <h1 className="mt-8 text-[clamp(2.1rem,5.6vw,3.4rem)] font-extrabold leading-[1.08] tracking-[-0.03em] text-ink">
               {t.intro.title}
             </h1>
-            <p className="mx-auto mt-6 max-w-[600px] text-justify text-[15px] leading-[1.75] text-ink-2/80">
+            <p className="mx-auto mt-6 max-w-[600px] text-[15px] leading-[1.75] text-ink-2/80">
               {t.intro.body}
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
