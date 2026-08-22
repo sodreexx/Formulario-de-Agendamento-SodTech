@@ -101,7 +101,7 @@ const DICT: Record<Lang, Copy> = {
     intro: {
       title: 'Vamos conversar sobre o futuro da sua empresa',
       body: 'Preencha rapidinho seus dados para que nosso time entre em contato e agende uma reunião personalizada. Estamos prontos para entender suas necessidades e encontrar a melhor solução.',
-      bodyMobile: 'Preencha seus dados para agendar uma reunião personalizada com nosso time e entender suas necessidades.',
+      bodyMobile: 'Conte um pouco sobre você e deixe nosso time preparar um encontro sob medida para o seu negócio.',
       cta: 'Começar',
       time: 'Leva cerca de 2 minutos',
     },
@@ -155,7 +155,7 @@ const DICT: Record<Lang, Copy> = {
     intro: {
       title: "Let's talk about the future of your company",
       body: 'Fill in your details quickly so our team can reach out and schedule a personalized meeting. We are ready to understand your needs and find the best solution.',
-      bodyMobile: 'Fill in your details so our team can schedule a personalized meeting and understand your needs.',
+      bodyMobile: 'Share your details and let our team put together a conversation tailored to your business.',
       cta: 'Get started',
       time: 'Takes about 2 minutes',
     },
