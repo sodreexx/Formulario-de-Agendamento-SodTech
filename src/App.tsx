@@ -277,82 +277,47 @@ const EMPTY: Form = {
 /* Teclado virtual                                                    */
 /* ------------------------------------------------------------------ */
 
-/** Mantém cabeçalho e rodapé (que são `fixed`) visíveis quando o teclado
- *  virtual do celular abre. No iOS Safari, a viewport de layout (usada por
- *  `position: fixed`) não encolhe com o teclado — só a viewport visual —
- *  então elementos fixos podem sair da área visível. Aqui a gente escuta a
- *  `visualViewport` e desloca os dois de volta pra dentro da área visível.
+/** Espelha a viewport *visível* do navegador.
  *
- *  Importante: não usamos `window.innerHeight` como referência de "altura
- *  sem teclado" — no Safari esse valor também muda quando a barra de
- *  endereço encolhe/expande, e como isso costuma acontecer junto com a
- *  abertura do teclado, o cálculo `innerHeight - vv.height` pode inflar e
- *  fazer o rodapé "saltar" mais do que deveria. Em vez disso, guardamos a
- *  maior altura de viewport visual já observada nesta sessão como base.
+ *  No iOS o teclado não encolhe a viewport de layout — só a visual. É por isso
+ *  que `position: fixed` some atrás do teclado: ele se ancora na de layout,
+ *  que continua do tamanho da tela inteira.
  *
- *  Como essa base trava no maior valor (barra de endereço encolhida), a
- *  própria barra passa a contar como "encolhimento" quando reaparece. Por
- *  isso só tratamos como teclado um encolhimento acima de KEYBOARD_MIN: a
- *  barra do navegador ocupa ~50-100px, o teclado ~250-400px. */
-const KEYBOARD_MIN = 150
-
-function useKeyboardAwareOffsets() {
-  const [offsets, setOffsets] = useState({ top: 0, bottom: 0 })
-  const baseline = useRef(0)
+ *  Tentativas anteriores calculavam, por elemento, quanto empurrar de volta
+ *  com `translateY`. Isso errou por dois motivos difíceis de acertar: a barra
+ *  de endereço do Safari mexe nas mesmas medidas, e cada elemento precisava da
+ *  sua própria conta. Aqui a medida é usada uma vez só, pra dimensionar o
+ *  container do app; cabeçalho, conteúdo e botão então se acomodam por fluxo
+ *  normal, sem conta nenhuma. */
+function useVisualViewport() {
+  const [vp, setVp] = useState<{ height: number | null; offsetTop: number }>({
+    height: null,
+    offsetTop: 0,
+  })
 
   useEffect(() => {
     const vv = window.visualViewport
     if (!vv) return
 
-    baseline.current = vv.height
-
+    let frame = 0
     const update = () => {
-      if (vv.height > baseline.current) baseline.current = vv.height
-      const shrink = baseline.current - vv.height
-      if (shrink < KEYBOARD_MIN) {
-        setOffsets({ top: 0, bottom: 0 })
-        return
-      }
-      const top = vv.offsetTop
-      const bottom = Math.max(0, shrink - vv.offsetTop)
-      setOffsets({ top, bottom })
+      // O iOS dispara vários eventos durante a animação do teclado; agrupar
+      // por frame evita re-render a cada um deles.
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => setVp({ height: vv.height, offsetTop: vv.offsetTop }))
     }
 
     update()
     vv.addEventListener('resize', update)
     vv.addEventListener('scroll', update)
     return () => {
+      cancelAnimationFrame(frame)
       vv.removeEventListener('resize', update)
       vv.removeEventListener('scroll', update)
     }
   }, [])
 
-  return offsets
-}
-
-/** Detecta o teclado virtual pelo foco em campos de texto, não pela medida da
- *  viewport. No iOS a viewport também muda por conta da barra de endereço, o
- *  que torna qualquer cálculo baseado nela pouco confiável; o foco, não. */
-function useKeyboardOpen() {
-  const [open, setOpen] = useState(false)
-
-  useEffect(() => {
-    if (!window.matchMedia('(pointer: coarse)').matches) return
-
-    const isField = (el: EventTarget | null) =>
-      el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')
-    const onIn = (e: FocusEvent) => isField(e.target) && setOpen(true)
-    const onOut = (e: FocusEvent) => isField(e.target) && setOpen(false)
-
-    document.addEventListener('focusin', onIn)
-    document.addEventListener('focusout', onOut)
-    return () => {
-      document.removeEventListener('focusin', onIn)
-      document.removeEventListener('focusout', onOut)
-    }
-  }, [])
-
-  return open
+  return vp
 }
 
 /** Painel de diagnóstico — só aparece com `?debug` na URL. Serve pra ler os
@@ -428,7 +393,7 @@ function Header({
   const progress = step === 0 ? 0 : Math.min(step / TOTAL, 1)
 
   return (
-    <header className="fixed inset-x-0 top-0 z-20">
+    <header className="relative z-20 flex-none">
       <div className="flex items-center justify-between px-6 py-5 sm:px-10">
         <Logo height={20} />
         <div className="flex items-center gap-3">
@@ -489,13 +454,11 @@ function Question({
   title,
   hint,
   children,
-  footer,
 }: {
   badge: ReactNode
   title: ReactNode
   hint?: ReactNode
   children?: ReactNode
-  footer?: ReactNode
 }) {
   return (
     <div className="step-in w-full max-w-[720px]">
@@ -505,7 +468,6 @@ function Question({
       </h1>
       {hint && <p className="mt-3 max-w-[600px] text-[15px] leading-relaxed text-ink-2/80">{hint}</p>}
       {children && <div className="mt-10">{children}</div>}
-      {footer}
     </div>
   )
 }
@@ -520,8 +482,6 @@ function Footer({
   t,
   hintKey = true,
   disabled = false,
-  keyboardOffset = 0,
-  inline = false,
 }: {
   onBack?: () => void
   onNext: () => void
@@ -529,39 +489,11 @@ function Footer({
   t: Copy
   hintKey?: boolean
   disabled?: boolean
-  keyboardOffset?: number
-  /** Em fluxo normal, logo abaixo do campo — usado enquanto o teclado virtual
-   *  está aberto, pra não disputar posicionamento com o Safari. */
-  inline?: boolean
 }) {
-  const self = useRef<HTMLDivElement>(null)
-
-  // Ao entrar em modo inline (teclado abrindo), garante que o botão fique
-  // visível: o Safari rola o campo focado pra área visível, mas não o que
-  // vem logo depois dele.
-  useEffect(() => {
-    if (!inline) return
-    const id = setTimeout(() => self.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 350)
-    return () => clearTimeout(id)
-  }, [inline])
-
   return (
     <div
-      ref={self}
-      className={
-        inline
-          ? 'mt-8 flex items-center gap-4'
-          : 'fixed bottom-0 left-0 z-20 flex items-center gap-4 px-6 pt-7 sm:px-16'
-      }
-      style={
-        inline
-          ? undefined
-          : {
-              paddingBottom: 'max(1.75rem, env(safe-area-inset-bottom))',
-              transform: keyboardOffset ? `translateY(-${keyboardOffset}px)` : undefined,
-              transition: 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)',
-            }
-      }
+      className="relative z-20 flex flex-none items-center gap-4 px-6 pt-5 sm:px-16"
+      style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
     >
       {onBack && (
         <button
@@ -704,8 +636,7 @@ export default function App() {
 
   const t = DICT[lang]
   const sizes = SIZES[lang]
-  const keyboardOffsets = useKeyboardAwareOffsets()
-  const keyboardOpen = useKeyboardOpen()
+  const viewport = useVisualViewport()
   const debug = typeof window !== 'undefined' && window.location.search.includes('debug')
 
   useEffect(() => {
@@ -721,6 +652,26 @@ export default function App() {
   useEffect(() => {
     setStepError(null)
   }, [step])
+
+  // Ao abrir o teclado, a área de conteúdo encolhe e um campo alto (a caixa de
+  // observações) pode ficar parcialmente abaixo dela. Traz o campo em foco de
+  // volta pra área visível assim que a altura assenta.
+  const lastHeight = useRef<number | null>(null)
+  useEffect(() => {
+    const height = viewport.height
+    if (height == null) return
+    const previous = lastHeight.current
+    lastHeight.current = height
+    // Só encolhimentos grandes são teclado; a barra do navegador é bem menor.
+    if (previous == null || height >= previous - 100) return
+
+    const field = document.activeElement
+    if (!(field instanceof HTMLElement)) return
+    if (field.tagName !== 'INPUT' && field.tagName !== 'TEXTAREA') return
+
+    const id = setTimeout(() => field.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 280)
+    return () => clearTimeout(id)
+  }, [viewport.height])
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
@@ -833,7 +784,19 @@ export default function App() {
     <>
       {!ready && <Preloader onDone={() => setReady(true)} />}
       {debug && <DebugOverlay />}
-    <div className="relative min-h-dvh overflow-hidden bg-canvas" style={{ opacity: ready ? 1 : 0, transition: 'opacity 0.4s ease 0.1s' }}>
+    <div
+      className="fixed inset-x-0 top-0 flex flex-col overflow-hidden bg-canvas"
+      style={{
+        // Altura da viewport *visível*: encolhe junto com o teclado, e é isso
+        // que reposiciona pergunta, campo e botão — sem deslocar nada à mão.
+        height: viewport.height ? `${viewport.height}px` : '100dvh',
+        // Acompanha a rolagem que o iOS aplica na viewport visual ao focar.
+        transform: viewport.offsetTop ? `translateY(${viewport.offsetTop}px)` : undefined,
+        opacity: ready ? 1 : 0,
+        transition:
+          'height 0.25s cubic-bezier(0.25,0.1,0.25,1), transform 0.25s cubic-bezier(0.25,0.1,0.25,1), opacity 0.4s ease 0.1s',
+      }}
+    >
       <div className="paper-wash pointer-events-none absolute inset-0" />
       <div className="paper-grid pointer-events-none absolute inset-0" />
 
@@ -847,11 +810,12 @@ export default function App() {
       />
 
       <main
-        className={`relative z-10 mx-auto flex min-h-dvh max-w-[1180px] justify-center px-6 sm:px-10 ${
-          keyboardOpen ? 'items-start pb-16 pt-28' : 'items-center pb-40 pt-32'
-        }`}
+        className="relative z-10 flex flex-1 overflow-y-auto px-6 sm:px-10"
         onKeyDown={onEnter}
       >
+        {/* `m-auto` centraliza sem cortar o topo quando o conteúdo é mais alto
+            que a área disponível — o que acontece com o teclado aberto. */}
+        <div className="m-auto flex w-full max-w-[1180px] justify-center py-8">
         {step === 0 && (
           <div className="step-in mx-auto max-w-[720px] text-center">
             <div className="flex justify-center">
@@ -885,16 +849,7 @@ export default function App() {
         {step >= 1 && step <= 8 && (() => {
           const q = t.q[step - 1]
           return (
-            <Question
-              badge={<>{step} →</>}
-              title={q.title(who, co)}
-              hint={q.hint}
-              footer={
-                keyboardOpen ? (
-                  <Footer inline onBack={step > 1 ? back : undefined} onNext={advance} label={t.ok} t={t} />
-                ) : null
-              }
-            >
+            <Question badge={<>{step} →</>} title={q.title(who, co)} hint={q.hint}>
               {step === 1 && (
                 <div className="flex items-end gap-5">
                   <div className="relative shrink-0">
@@ -1092,10 +1047,11 @@ export default function App() {
             </button>
           </div>
         )}
+        </div>
       </main>
 
-      {step >= 1 && step <= 8 && !keyboardOpen && (
-        <Footer onBack={step > 1 ? back : undefined} onNext={advance} label={t.ok} t={t} keyboardOffset={keyboardOffsets.bottom} />
+      {step >= 1 && step <= 8 && (
+        <Footer onBack={step > 1 ? back : undefined} onNext={advance} label={t.ok} t={t} />
       )}
       {step === 9 && (
         <Footer
@@ -1104,23 +1060,22 @@ export default function App() {
           label={sending ? t.sending : t.send}
           t={t}
           disabled={sending || hasMissing}
-          keyboardOffset={keyboardOffsets.bottom}
         />
       )}
-
-      <ErrorModal
-        isOpen={!!submitError}
-        title={t.errors.modalTitle}
-        message={submitError || ''}
-        primaryLabel={t.errors.retry}
-        secondaryLabel={t.errors.dismiss}
-        onPrimary={() => {
-          setSubmitError(null)
-          void submit()
-        }}
-        onSecondary={() => setSubmitError(null)}
-      />
     </div>
+
+    <ErrorModal
+      isOpen={!!submitError}
+      title={t.errors.modalTitle}
+      message={submitError || ''}
+      primaryLabel={t.errors.retry}
+      secondaryLabel={t.errors.dismiss}
+      onPrimary={() => {
+        setSubmitError(null)
+        void submit()
+      }}
+      onSecondary={() => setSubmitError(null)}
+    />
     </>
   )
 }

@@ -61,6 +61,15 @@ body,
   height: 100%;
 }
 
+/* O app é um shell de altura fixa com rolagem interna, então a página em si
+   nunca rola. Sem isso, o iOS rola o documento ao focar um campo e desloca o
+   shell junto. */
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
