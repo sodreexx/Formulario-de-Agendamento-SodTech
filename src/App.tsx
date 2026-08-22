@@ -1013,7 +1013,9 @@ export default function App() {
             <h1 className="mt-5 text-[clamp(2rem,4.8vw,2.9rem)] font-extrabold leading-[1.1] tracking-[-0.03em] text-ink">
               {t.reviewTitle}
             </h1>
-            <p className="mt-3 text-[15px] text-ink-2/80">{t.reviewSub}</p>
+            {/* No mobile a largura é limitada pra o texto cair em 3 linhas,
+                evitando a última linha órfã. No desktop volta ao normal. */}
+            <p className="mt-3 max-w-[15rem] text-[15px] text-ink-2/80 sm:max-w-none">{t.reviewSub}</p>
 
             <ul className="mt-10 overflow-hidden rounded-2xl border border-line/70 bg-surface/70">
               {summary.map((row, index) => (
