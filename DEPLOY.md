@@ -1,17 +1,17 @@
 # Deploy — Formulário de Agendamento (Sod Tech)
 
-Guia passo a passo pra colocar o site no ar: **front-end na Vercel** + **back-end
-na Render**, usando os subdomínios gratuitos de cada um.
+Guia passo a passo pra colocar o site no ar: **tudo na Vercel** (front-end +
+back-end no mesmo deploy, funções serverless em `/api`) + **Supabase**
+(banco, só pro limite de envio e o histórico de agendamentos).
 
-A ordem importa: back-end primeiro (pra saber a URL final), depois front-end
-(apontando pra essa URL), depois voltar no back-end pra liberar o CORS.
+Não existe mais um back-end separado — front e back ficam na mesma origem,
+então não há CORS pra configurar nem uma segunda URL pra esperar.
 
 ---
 
 ## 0. Pré-requisito: subir o código pro GitHub
 
-1. Crie um repositório novo (vazio, sem README) em https://github.com/new —
-   por exemplo `sod-tech-agendamento`.
+1. Crie um repositório novo (vazio, sem README) em https://github.com/new.
 2. No terminal, dentro da pasta do projeto:
 
 ```bash
@@ -22,82 +22,69 @@ git push -u origin main
 
 ---
 
-## 1. Back-end na Render
+## 1. Banco no Supabase
 
-1. Acesse https://dashboard.render.com → **New** → **Blueprint**.
-2. Conecte sua conta do GitHub e selecione o repositório.
-3. A Render vai detectar o arquivo `render.yaml` na raiz do projeto e propor o
-   serviço `sod-tech-agendamento-api` automaticamente (raiz em `server/`).
-4. Antes de confirmar, ela vai pedir pra preencher as variáveis de ambiente
-   (elas ficam marcadas como "sync: false" de propósito, pra nunca ir pro
-   git):
-   - `GMAIL_USER` → `sodreedev@gmail.com`
-   - `GMAIL_APP_PASSWORD` → a senha de app de 16 letras (a mesma que já está
-     no seu `server/.env` local)
-   - `NOTIFY_EMAIL` → `sodreedev@gmail.com`
-   - `ALLOWED_ORIGIN` → deixe `http://localhost:8443` por enquanto, vamos
-     trocar no passo 3
-5. Clique em **Apply** / **Create**. Espere o deploy terminar (alguns
-   minutos).
-6. Copie a URL que a Render gerou, algo como
-   `https://sod-tech-agendamento-api.onrender.com`.
+1. Acesse https://supabase.com/dashboard → **New project** (plano gratuito).
+2. Espere o projeto provisionar (1-2 minutos).
+3. Abra **SQL Editor** → **New query**, cole o conteúdo de
+   [`supabase/schema.sql`](supabase/schema.sql) e clique **Run**. Isso cria
+   as tabelas `leads` e `rate_limit_hits`, já com RLS ligado.
+4. Em **Project Settings → API**, copie:
+   - **Project URL** → vai virar `SUPABASE_URL`
+   - **service_role key** (não a `anon`/`public`!) → vai virar
+     `SUPABASE_SERVICE_ROLE_KEY`
 
-> **Plano gratuito da Render "dorme"** depois de ~15 min sem uso, e a
-> primeira requisição depois disso demora ~30-50s pra "acordar" o serviço.
-> Isso é normal no plano free — não é bug. Se isso incomodar, dá pra migrar
-> pro plano pago (~7 USD/mês) depois.
+> A `service_role key` dá acesso total ao banco, ignorando as regras de
+> segurança (RLS). Ela só deve existir nas variáveis de ambiente da Vercel
+> (nunca no código, nunca no front-end) — é exatamente esse o motivo pelo
+> qual as funções em `/api` continuam sendo peça necessária: o navegador
+> nunca fala com o Supabase diretamente.
 
 ---
 
-## 2. Front-end na Vercel
+## 2. Front-end + back-end na Vercel
 
-1. Abra `[vercel.json](vercel.json)` neste projeto e troque
-   `SUBSTITUA-PELA-URL-DO-RENDER.onrender.com` pela URL que você copiou no
-   passo 1.6. Depois:
-
-```bash
-git add vercel.json
-git commit -m "Aponta o proxy /api para o back-end da Render"
-git push
-```
-
-2. Acesse https://vercel.com/new, conecte o GitHub e importe o mesmo
-   repositório.
-3. A Vercel detecta automaticamente que é um projeto Vite (build command
-   `npm run build`, output `dist`) — não precisa mexer em nada.
+1. Acesse https://vercel.com/new, conecte o GitHub e importe o repositório.
+2. A Vercel detecta automaticamente que é um projeto Vite (build command
+   `npm run build`, output `dist`) e que `/api/*.js` são funções serverless —
+   não precisa mexer em nada de configuração.
+3. Antes de clicar em **Deploy**, adicione as variáveis de ambiente
+   (**Environment Variables**):
+   - `GMAIL_USER` → `sodreedev@gmail.com`
+   - `GMAIL_APP_PASSWORD` → a senha de app de 16 letras (a mesma que já está
+     no seu `.env` local)
+   - `NOTIFY_EMAIL` → `sodreedev@gmail.com`
+   - `SUPABASE_URL` → o Project URL copiado no passo 1.4
+   - `SUPABASE_SERVICE_ROLE_KEY` → a service role key copiada no passo 1.4
 4. Clique em **Deploy**. Ao final, você recebe uma URL tipo
    `https://sod-tech-agendamento.vercel.app`.
 
 ---
 
-## 3. Voltar na Render e liberar o CORS
-
-1. No dashboard da Render, abra o serviço → **Environment**.
-2. Edite `ALLOWED_ORIGIN` para a URL exata que a Vercel te deu no passo 2.4
-   (sem barra `/` no final), por exemplo:
-   `https://sod-tech-agendamento.vercel.app`
-3. Salve — a Render reinicia o serviço sozinha.
-
----
-
-## 4. Testar no ar
+## 3. Testar no ar
 
 1. Abra a URL da Vercel no navegador.
 2. Preencha o formulário completo e clique em **Enviar**.
 3. Confirme que o e-mail chegou em `sodreedev@gmail.com`.
+4. No Supabase, abra **Table Editor → leads** e confirme que a linha
+   apareceu com `email_sent = true`.
 
-Se der erro de CORS no console do navegador, confira se a `ALLOWED_ORIGIN`
-na Render é **exatamente** igual à URL da Vercel (https, sem barra final).
+Sem hibernação, sem espera de 30-50s: a primeira requisição já responde
+normalmente.
+
+---
+
+## Desenvolvimento local
+
+`npm run dev` já sobe front-end e as funções de `/api` juntos (o Vite emula
+localmente o mesmo formato que a Vercel roda em produção — veja
+`vercelApiEmulator` em [`vite.config.ts`](vite.config.ts)). Crie um `.env` na
+raiz (veja `.env.example`) com as mesmas variáveis do passo 2.3.
 
 ---
 
 ## Depois: domínio próprio (opcional, quando quiser)
 
-Quando tiver um domínio (ex: `agendamento.sodtech.com.br`):
-
-1. Na Vercel: Project → Settings → Domains → adicionar o domínio e seguir as
-   instruções de DNS.
-2. Atualizar `ALLOWED_ORIGIN` na Render pro novo domínio.
-3. Se quiser, apontar um subdomínio pro back-end também (ex:
-   `api.sodtech.com.br`) nas configurações de Custom Domain da Render, e
-   atualizar `vercel.json` de acordo.
+Quando tiver um domínio (ex: `agendamento.sodtech.com.br`): Vercel → Project
+→ Settings → Domains → adicionar o domínio e seguir as instruções de DNS.
+Nenhuma outra configuração muda — o back-end é parte do mesmo deploy.
